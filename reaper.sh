@@ -11,6 +11,9 @@ while :; do
   [ -S "$HERDR_SOCKET_PATH" ] || exit 0
   if [ -d "$STATE_DIR" ]; then
     now_ms=$(($(date +%s) * 1000))
+    # A crash between mo's temp-write and rename leaves a *.json.tmp orphan; sweep any older
+    # than a minute (a live publish renames within milliseconds).
+    find "$STATE_DIR" -name '*.json.tmp' -mmin +1 -delete 2>/dev/null || true
     for state_file in "$STATE_DIR"/*.json; do
       [ -e "$state_file" ] || break
       record=$(python3 -c '
