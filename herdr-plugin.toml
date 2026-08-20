@@ -1,0 +1,15 @@
+id = "momento.mo"
+name = "mo"
+version = "0.1.0"
+min_herdr_version = "0.8.0"
+description = "Restore mo sessions after a herdr restart, launch mo, and clear rows mo could not release"
+platforms = ["macos", "linux"]
+
+[[startup]]
+command = ["/bin/sh", "startup.sh"]
+
+[[actions]]
+id = "launch"
+title = "Launch mo in this pane"
+contexts = ["pane"]
+command = ["/bin/sh", "launch.sh"]
