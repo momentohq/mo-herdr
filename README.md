@@ -10,6 +10,9 @@ plugin adds the parts that cannot live inside the mo process:
   with their conversation intact.
 - **Launch** — a pane action (bindable) that starts mo, since `herdr agent start --kind mo`
   does not know custom agents.
+- **Swarm** — stand up a whole labeled multi-pane mo swarm (an orchestrator plus a balanced
+  column of workers) from one spec file, so a repo carries a small `.mo-swarm.json` instead of
+  a bespoke pane-plumbing script.
 - **Reaper** — clears a pane row if mo is SIGKILLed (the one death it cannot report itself).
 
 ## Install
@@ -17,6 +20,46 @@ plugin adds the parts that cannot live inside the mo process:
 ```sh
 herdr plugin install momentohq/mo-herdr
 ```
+
+## Swarm
+
+One command builds the workspace, splits a balanced worker column, labels every pane, launches
+each mo with its own flags and opening prompt, and prints the resulting ids as JSON:
+
+```sh
+sh swarm.sh path/to/spec.json          # scripted
+# or the "Launch mo swarm" workspace action, which looks for .mo-swarm.json in each of the
+# workspace's pane cwds and runs it only when they agree on exactly one spec (two different
+# specs across panes is an error — never a guess about which repo you meant)
+```
+
+The spec (paths resolve relative to the spec file; full shape in `swarm.py`):
+
+```json
+{
+  "workspace_label": "review-factory",
+  "panes": [
+    {"label": "rf-orch",
+     "flags": ["--intercom=rf-orch", "--intercom-trigger", "always", "--intercom-allow", "rf-adv"]},
+    {"label": "rf-adv",
+     "flags": ["--intercom=rf-adv", "--intercom-accept", "{root_session_id}",
+               "--intercom-trigger", "always", "--intercom-allow", "{root_session_id}"],
+     "prompt_file": "prompts/rf-adv.md"}
+  ]
+}
+```
+
+The first pane is the root; the rest stack right in equal splits. `{root_session_id}` in a
+worker's flags substitutes the root's mo session id (resolved from the pane records, accepting
+only a record stamped after this launch), so workers can launch already trusting their
+orchestrator. What the swarm does **not** do: intercom consent beyond launch flags — the reverse
+grants stay with the caller (they cannot be pre-given; see the mo repo's intercom docs), until mo
+grows a real spawner (mfunc-llm-gw#3006).
+
+**A spec is code.** Its contents become the shell command each pane runs: `flags` as a list is
+shell-quoted element-wise (the safe form above), while a plain-string `flags` is passed verbatim
+as trusted shell syntax. The workspace action discovers `.mo-swarm.json` in the workspace's pane cwds —
+only run it over repos you trust, the same standing you give a Makefile.
 
 ## Configuration warning
 
