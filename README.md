@@ -37,19 +37,27 @@ The spec (paths resolve relative to the spec file; full shape in `swarm.py`):
 {
   "workspace_label": "review-factory",
   "panes": [
-    {"label": "rf-orch", "flags": "--intercom=rf-orch --intercom-trigger always --intercom-allow rf-adv"},
+    {"label": "rf-orch",
+     "flags": ["--intercom=rf-orch", "--intercom-trigger", "always", "--intercom-allow", "rf-adv"]},
     {"label": "rf-adv",
-     "flags": "--intercom=rf-adv --intercom-accept {root_session_id} --intercom-trigger always --intercom-allow {root_session_id}",
+     "flags": ["--intercom=rf-adv", "--intercom-accept", "{root_session_id}",
+               "--intercom-trigger", "always", "--intercom-allow", "{root_session_id}"],
      "prompt_file": "prompts/rf-adv.md"}
   ]
 }
 ```
 
 The first pane is the root; the rest stack right in equal splits. `{root_session_id}` in a
-worker's flags substitutes the root's mo session id (resolved from the pane records), so workers
-can launch already trusting their orchestrator. What the swarm does **not** do: intercom consent
-beyond launch flags — the reverse grants stay with the caller (they cannot be pre-given; see the
-mo repo's intercom docs), until mo grows a real spawner (mfunc-llm-gw#3006).
+worker's flags substitutes the root's mo session id (resolved from the pane records, accepting
+only a record stamped after this launch), so workers can launch already trusting their
+orchestrator. What the swarm does **not** do: intercom consent beyond launch flags — the reverse
+grants stay with the caller (they cannot be pre-given; see the mo repo's intercom docs), until mo
+grows a real spawner (mfunc-llm-gw#3006).
+
+**A spec is code.** Its contents become the shell command each pane runs: `flags` as a list is
+shell-quoted element-wise (the safe form above), while a plain-string `flags` is passed verbatim
+as trusted shell syntax. The workspace action reads `.mo-swarm.json` from a checked-out repo —
+only run it in repos you trust, the same standing you give a Makefile.
 
 ## Configuration warning
 
