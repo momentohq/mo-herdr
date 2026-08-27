@@ -1,8 +1,8 @@
 id = "momento.mo"
 name = "mo"
-version = "0.1.0"
+version = "0.2.0"
 min_herdr_version = "0.8.0"
-description = "Restore mo sessions after a herdr restart, launch mo, and clear rows mo could not release"
+description = "Restore mo sessions after a herdr restart, launch mo (single pane or labeled swarm), and clear rows mo could not release"
 platforms = ["macos", "linux"]
 
 [[startup]]
@@ -13,3 +13,9 @@ id = "launch"
 title = "Launch mo in this pane"
 contexts = ["pane"]
 command = ["/bin/sh", "launch.sh"]
+
+[[actions]]
+id = "swarm"
+title = "Launch mo swarm from .mo-swarm.json"
+contexts = ["workspace"]
+command = ["/bin/sh", "swarm.sh"]
