@@ -4,8 +4,9 @@ balanced column of worker panes, each launching mo with its own flags and openin
 
 Usage:
   python3 swarm.py <spec.json>     # scripted entry (also what swarm.sh wraps)
-  python3 swarm.py                 # action entry: reads .mo-swarm.json from the invoking
-                                   # workspace's root (HERDR_WORKSPACE_ID)
+  python3 swarm.py                 # action entry: discovers .mo-swarm.json across the
+                                   # invoking workspace's pane cwds (HERDR_WORKSPACE_ID);
+                                   # exactly one distinct spec must be found
 
 Spec shape (paths resolve relative to the spec file's directory):
 

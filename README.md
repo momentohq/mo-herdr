@@ -28,7 +28,9 @@ each mo with its own flags and opening prompt, and prints the resulting ids as J
 
 ```sh
 sh swarm.sh path/to/spec.json          # scripted
-# or the "Launch mo swarm" workspace action, which reads <workspace cwd>/.mo-swarm.json
+# or the "Launch mo swarm" workspace action, which looks for .mo-swarm.json in each of the
+# workspace's pane cwds and runs it only when they agree on exactly one spec (two different
+# specs across panes is an error — never a guess about which repo you meant)
 ```
 
 The spec (paths resolve relative to the spec file; full shape in `swarm.py`):
@@ -56,8 +58,8 @@ grows a real spawner (mfunc-llm-gw#3006).
 
 **A spec is code.** Its contents become the shell command each pane runs: `flags` as a list is
 shell-quoted element-wise (the safe form above), while a plain-string `flags` is passed verbatim
-as trusted shell syntax. The workspace action reads `.mo-swarm.json` from a checked-out repo —
-only run it in repos you trust, the same standing you give a Makefile.
+as trusted shell syntax. The workspace action discovers `.mo-swarm.json` in the workspace's pane cwds —
+only run it over repos you trust, the same standing you give a Makefile.
 
 ## Configuration warning
 
