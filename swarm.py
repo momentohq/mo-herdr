@@ -137,17 +137,31 @@ def rename_agents_when_detected(pane_ids_to_labels):
 
 
 def spec_path_from_action_context():
-    """Action entry: resolve <workspace cwd>/.mo-swarm.json for the invoking workspace."""
+    """Action entry: resolve .mo-swarm.json from the invoking workspace's pane cwds.
+    Every pane cwd is considered (panes may have diverged directories), but the action
+    proceeds only when they agree on ONE spec — a spec is code, so silently executing
+    whichever repo a worker pane happens to sit in is not acceptable; ambiguity errors.
+    A footgun guard, not a security boundary: a same-user process that can swap these
+    paths between check and open already owns everything this process does."""
     workspace_id = os.environ.get("HERDR_WORKSPACE_ID")
     if not workspace_id:
         raise SystemExit("usage: swarm.py <spec.json> (or run as a workspace action)")
+    candidates = []
     tried = []
     for pane in herdr("pane", "list")["panes"]:
         if pane.get("workspace_id") == workspace_id and pane.get("cwd"):
-            candidate = os.path.join(pane["cwd"], ".mo-swarm.json")
-            if os.path.exists(candidate):
-                return candidate
-            tried.append(pane["cwd"])
+            candidate = os.path.realpath(os.path.join(pane["cwd"], ".mo-swarm.json"))
+            if os.path.isfile(candidate):
+                if candidate not in candidates:
+                    candidates.append(candidate)
+            else:
+                tried.append(pane["cwd"])
+    if len(candidates) == 1:
+        return candidates[0]
+    if candidates:
+        raise SystemExit(
+            f"ambiguous: workspace {workspace_id} pane cwds carry different specs: {', '.join(candidates)}"
+        )
     raise SystemExit(
         f"no .mo-swarm.json found in workspace {workspace_id} (looked in: {', '.join(tried) or 'no pane cwds'})"
     )
@@ -191,7 +205,14 @@ def main():
         if pane.get("prompt_file"):
             command += f" --prompt-file {shlex.quote(os.path.join(spec_dir, pane['prompt_file']))}"
         herdr("pane", "rename", pane_id, pane["label"])
-        not_before_ms = int(time.time() * 1000) - 2000  # slack for a sub-second stamp race
+        # Floor captured before `pane run`, no slack: mo stamps its record with the same
+        # machine clock after this line, and slack would re-admit a record refreshed just
+        # before this launch. What the floor guarantees: a record left by a DEAD process
+        # (the stale case — pane processes die with their pty, so a prior generation's mo
+        # cannot still be refreshing) never satisfies it. What it does not: a backward
+        # wall-clock step mid-launch can under-stamp the new record — that degrades to
+        # this launch's bounded timeout, never to a wrong session id.
+        not_before_ms = int(time.time() * 1000)
         herdr("pane", "run", pane_id, command)
         return not_before_ms
 
