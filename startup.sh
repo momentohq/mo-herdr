@@ -24,6 +24,25 @@ except Exception:
 # Restore only records younger than this: a record that stopped refreshing days ago is a machine
 # reboot or long-dead session, not a herdr restart to recover from. mo refreshes every ~60s.
 MAX_RESTORE_AGE_MS=$((48 * 3600 * 1000))
+PROCESS_INFO_ATTEMPTS=5
+PROCESS_INFO_RETRY_DELAY_SECONDS=1
+
+# Restored panes can briefly reject process inspection while their shell processes settle. Retry
+# within a bounded window so one transient API failure does not discard an otherwise valid record.
+read_process_info() {
+  process_info_pane=$1
+  process_info_attempt=1
+  while [ "$process_info_attempt" -le "$PROCESS_INFO_ATTEMPTS" ]; do
+    if process_info=$("$HERDR_BIN_PATH" pane process-info --pane "$process_info_pane" 2>/dev/null); then
+      printf '%s' "$process_info"
+      return 0
+    fi
+    [ "$process_info_attempt" -eq "$PROCESS_INFO_ATTEMPTS" ] || sleep "$PROCESS_INFO_RETRY_DELAY_SECONDS"
+    process_info_attempt=$((process_info_attempt + 1))
+  done
+  echo "process-info retry exhausted for pane $process_info_pane" >> "$LOG"
+  return 1
+}
 
 if [ -d "$STATE_DIR" ]; then
   now_ms=$(($(date +%s) * 1000))
@@ -38,7 +57,7 @@ if [ -d "$STATE_DIR" ]; then
     [ -n "$updated_ms" ] && [ $((now_ms - updated_ms)) -lt "$MAX_RESTORE_AGE_MS" ] || continue
     # Pane ids survive a herdr restart (verified on 0.8.0); confirm the pane exists and is at a
     # bare shell before typing into it. cwd is the guard when panes were renumbered.
-    info=$("$HERDR_BIN_PATH" pane process-info --pane "$pane_id" 2>/dev/null) || continue
+    info=$(read_process_info "$pane_id") || continue
     printf '%s' "$info" | grep -q '"name":"mo"' && continue    # already running (live handoff)
     current_cwd=$(printf '%s' "$info" | python3 -c '
 import json, sys

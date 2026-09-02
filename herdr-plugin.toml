@@ -1,6 +1,6 @@
 id = "momento.mo"
 name = "mo"
-version = "0.2.0"
+version = "0.2.1"
 min_herdr_version = "0.8.0"
 description = "Restore mo sessions after a herdr restart, launch mo (single pane or labeled swarm), and clear rows mo could not release"
 platforms = ["macos", "linux"]
